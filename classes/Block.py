@@ -1,28 +1,50 @@
-import hashlib
-import uuid
+import json
 import os
+import shutil
+import hashlib
 from os import walk
 
+
 class Block:
-    
-    def __init__(self, base_hash, new_hash, parent_hash):
+    def __init__(self, base_hash, hash, parent_hash):
         self.base_hash = base_hash
-        self.hash = new_hash
+        self.hash = hash
         self.parent_hash = parent_hash
         self.transactions = []
-        self.check_hash()
+        if self.check_hash() is False:
+            return False
+
+
 
     def check_hash(self):
-        test_hash = hashlib.sha256(self.base_hash.encode()).hexdigest()
-        return self.hash == test_hash
 
-    def add_transaction(self, wallet_emitter, wallet_receiver, amount):
-        self.transactions.append({"id_transaction": self.generate_id_transaction(), "wallet_emitter": wallet_emitter,"wallet_receiver":wallet_receiver, "amount": amount})
+        hash = hashlib.sha256(self.base_hash.encode()).hexdigest()
+
+        if self.hash == hash:
+            return True
+        return False
+
+    def add_transaction(self, transaction):
+        self.transactions.append(transaction)
+        return self.save()
+
+    def get_transaction(self, number):
+        for t in self.transactions:
+            if t["number"] == number:
+                return t
+        return None
 
     def get_weight(self):
-        filename = './content/blocs/{}.py'.format(self.hash)
+        filename = './content/blocs/{}.json'.format(self.hash)
         file_stats = os.stat(filename)
         print(file_stats.st_size)
+
+    def save(self):
+        file_name = "./content/blocs/{}.json".format(self.hash)
+        jsonString = json.dumps({"id_block":self.hash,"parent_block":self.parent_hash,"transactions":self.transactions})
+
+        with open(file_name, "x") as file:
+            file.write(jsonString)
 
     def load(self, id_block):
 
@@ -43,28 +65,3 @@ class Block:
                 return json_data
         else:
             print('ERROR : The block was not found !')
-
-    def save(self):
-        file_name = "./content/blocs/{}.json".format(self.hash)
-        jsonString = json.dumps({"id_block":self.hash,"parent_hash":self.parent_hash,"transactions":self.transactions})
-
-        with open(file_name, "x") as file:
-            file.write(jsonString)
-    
-    def get_transaction(self, id_transaction):
-        for transaction in self.transactions:
-            if id_transaction == transaction['id_transaction']:
-                return transaction
-
-    def generate_id_transaction(self):
-        
-        id_generated = uuid.uuid1()
-        id_transactions = []
-
-        for transaction in self.transactions:
-            id_transactions.append(transaction['id_transaction'])
-
-        while(str(id_generated) in id_transactions):
-            id_generated = uuid.uuid1()
-
-        return str(id_generated)

@@ -1,65 +1,67 @@
 import uuid
+import os
 import json
-from os import walk
 
 
 class Wallet:
-    unic_id = int
-    balance = 0
-    history = {}
-
-    def __init__(self):
-        pass
-
-    def generate_unique_id(self):
-
-        file_names = []
-        for (dirpath, s, filenames) in walk("./content/wallets"):
-            file_names.extend(filenames)
-            break
-
-        unic_id = uuid.uuid1()
-
-        while str(unic_id) + ".json" in file_names:
-            unic_id = uuid.uuid1()
-
-        self.unic_id = int(unic_id)
-
-    def add_balance(self, amount: int):
-        self.balance = self.balance + amount
-
-    def sub_balance(self, amount):
-        if amount > self.balance:
-            print("ERROR : The amount is higher than your balance !")
+    def __init__(self, unic_id=None):
+        if unic_id is None:
+            self.unic_id = self.generate_unic_id ()
+            self.balance = 100
+            self.history = []
+            self.save()
         else:
-            self.balance = self.balance - amount
+            self.unic_id = unic_id
+            self.load()
 
-    def send(self):
-        pass
+    def generate_unic_id(self):
+        wallet_uuid = str(uuid.uuid4())
 
-    def load(self, unic_id):
+        if os.path.exists(f"./content/wallets/{wallet_uuid}.json"):
+            return self.generate_unic_id()
 
-        filename = str(unic_id) + ".json"
-        path_wallets_folder = "./content/wallets/"
-        file_names = []
+        return wallet_uuid
 
-        for (dirpath, filenames, filenames) in walk(path_wallets_folder):
-            file_names.extend(filenames)
-            break
+    def add_balance(self, transaction):
+        self.balance = self.balance + transaction["amount"]
+        self.send(transaction)
 
-        if filename in file_names:
-            with open(path_wallets_folder + filename, "r") as file:
-                json_data = json.load(file)
-                self.unic_id = json_data['id']
-                self.balance = json_data['balance']
-                self.history = json_data['history']
-                return json_data
-        else:
-            print('ERROR : The identification number was not found !')
+    def sub_balance(self, transaction):
+        self.balance -= transaction["amount"]
+        self.send(transaction)
+
+    def send(self, transaction):
+        self.history.append({
+
+            'amount': transaction["amount"],
+            'emitter': transaction["emitter"],
+            'receiver': transaction["receiver"],
+            'date': transaction["date"],
+            'transaction': transaction["number"]
+        })
+        self.save()
 
     def save(self):
-        file_name = "./content/wallets/{}.json".format(self.unic_id)
-        jsonString = json.dumps({"id": self.unic_id, "balance": self.balance, "history": self.history})
+        data = {
+            'unic_id ': self.unic_id,
+            'balance': self.balance,
+            'history': []
+        }
 
-        with open(file_name, "x") as file:
-            file.write(jsonString)
+        for h in self.history:
+            data['history'].append(h)
+
+        with open(f"./content/wallets/{self.unic_id }.json", "w") as file:
+            json.dump(data, file)
+
+    def load(self):
+        if os.path.exists(f"./content/wallets/{self.unic_id }.json"):
+            with open(f"./content/wallets/{self.unic_id }.json") as file:
+                data = json.load(file)
+                self.unic_id  = data["unic_id "]
+                self.balance = data["balance"]
+                self.history = data["history"]
+
+            return True
+        else:
+            return False
